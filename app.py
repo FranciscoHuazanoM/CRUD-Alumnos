@@ -1,19 +1,24 @@
 import os
-from flask import Flask, request, jsonify, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 # Crear instancia
 app = Flask(__name__)
 
-# Configuración de la base de datos PostgreSQL
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://crud_alumnos_2026_user:1calS9AaCgbDv8Lms5Jzfo4PMNFQVvrn@dpg-d6ai0kfgi27c73b7ibeg-a.oregon-postgres.render.com/crud_alumnos_2026"
+# ==============================
+# CONFIGURACIÓN BASE DE DATOS
+# ==============================
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://crud_alumnos_2026_user:1calS9AaCgbDv8Lms5Jzfo4PMNFQVvrn@dpg-d6ai0kfgi27c73b7ibeg-a.oregon-postgres.render.com/crud_alumnos_2026?sslmode=require"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Modelo de la base de datos
+# ==============================
+# MODELO
+# ==============================
 class Estudiante(db.Model):
     __tablename__ = 'estudiantes'
+
     no_control = db.Column(db.String, primary_key=True)
     nombre = db.Column(db.String)
     ap_paterno = db.Column(db.String)
@@ -29,36 +34,41 @@ class Estudiante(db.Model):
             'semestre': self.semestre,
         }
 
-# Crear las tablas si no existen
+# Crear tablas si no existen
 with app.app_context():
     db.create_all()
 
-# Ruta raíz
+# ==============================
+# RUTAS
+# ==============================
+
 @app.route('/')
 def index():
     estudiantes = Estudiante.query.all()
     return render_template('index.html', estudiantes=estudiantes)
 
-# Crear nuevo estudiante
+# Crear estudiante
 @app.route('/estudiantes/new', methods=['GET', 'POST'])
 def create_estudiante():
     if request.method == 'POST':
-        nvo_estudiante = Estudiante(
+        nuevo = Estudiante(
             no_control=request.form['no_control'],
             nombre=request.form['nombre'],
             ap_paterno=request.form['ap_paterno'],
             ap_materno=request.form['ap_materno'],
-            semestre=request.form['semestre']
+            semestre=int(request.form['semestre'])
         )
-        db.session.add(nvo_estudiante)
+
+        db.session.add(nuevo)
         db.session.commit()
         return redirect(url_for('index'))
+
     return render_template('create_estudiante.html')
 
 # Eliminar estudiante
-@app.route('/estudiantes/delete/<string:no_control>', methods=['POST'])
+@app.route('/estudiantes/delete/<string:no_control>')
 def delete_estudiante(no_control):
-    estudiante = db.session.get(Estudiante, no_control)
+    estudiante = Estudiante.query.get(no_control)
     if estudiante:
         db.session.delete(estudiante)
         db.session.commit()
@@ -67,22 +77,25 @@ def delete_estudiante(no_control):
 # Actualizar estudiante
 @app.route('/estudiantes/update/<string:no_control>', methods=['GET', 'POST'])
 def update_estudiante(no_control):
-    estudiante = db.session.get(Estudiante, no_control)
-    if estudiante is None:
-        return redirect(url_for('index'))
+    estudiante = Estudiante.query.get(no_control)
+
     if request.method == 'POST':
         estudiante.nombre = request.form['nombre']
         estudiante.ap_paterno = request.form['ap_paterno']
         estudiante.ap_materno = request.form['ap_materno']
-        estudiante.semestre = request.form['semestre']
+        estudiante.semestre = int(request.form['semestre'])
         db.session.commit()
         return redirect(url_for('index'))
+
     return render_template('update_estudiante.html', estudiante=estudiante)
 
-# Ruta /alumnos
+# Ruta prueba
 @app.route('/alumnos')
 def getAlumnos():
-    return 'Aqui van los alumnos'
+    return 'Aquí van los alumnos'
 
+# ==============================
+# MAIN
+# ==============================
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
